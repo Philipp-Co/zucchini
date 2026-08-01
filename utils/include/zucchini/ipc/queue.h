@@ -8,7 +8,7 @@ typedef struct ZUC_IpcQueue* ZUC_IpcQueue_t;
 
 typedef struct
 {
-    char *data;
+    char data[1024];
     uint16_t capacity;
     uint16_t size;
 } ZUC_IpcQueueItem_t;
@@ -19,10 +19,8 @@ typedef struct
     int32_t result;
 } ZUC_IpcQueueResult_t;
 
-ZUC_IpcQueue_t ZUC_CreateIpcQueue(void);
+ZUC_IpcQueue_t ZUC_CreateIpcQueue(const char *name);
 void ZUC_DestroyIpcQueue(ZUC_IpcQueue_t *queue);
-
-int ZUC_IpcQueueFiledescriptor(ZUC_IpcQueue_t queue);
 
 void ZUC_PushToIpcQueue(ZUC_IpcQueue_t queue, ZUC_IpcQueueItem_t item);
 ZUC_IpcQueueResult_t ZUC_PopFromIpcQueue(ZUC_IpcQueue_t queue);

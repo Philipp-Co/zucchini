@@ -2,6 +2,8 @@
 
 #include <signal.h>
 
+#define ZUC_SERVER_NAME "zucchini"
+
 static void ZUC_SignalHandler(int signum);
 
 int main(int argc, char **argv)
@@ -10,8 +12,9 @@ int main(int argc, char **argv)
     (void)argv;
 
     signal(SIGINT, ZUC_SignalHandler);
+    signal(SIGPIPE, SIG_IGN);
 
-    ZUC_CreateServer();
+    ZUC_CreateServer(ZUC_SERVER_NAME);
     ZUC_RunServer();
     ZUC_DestroyServer();
 

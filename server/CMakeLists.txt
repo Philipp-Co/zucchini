@@ -6,7 +6,7 @@ add_executable(zucchini_server
     src/macos/server.c
     src/macos/io/networkung/udp.c
     src/macos/io/networkung/tcp.c
-    src/macos/ipc/queue.c
+    src/macos/client/client.c
 )
 
 target_include_directories(zucchini_server

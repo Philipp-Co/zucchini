@@ -18,6 +18,8 @@
 #include <zucchini/admin/admin.h>
 #include <zucchini/definitions.h>
 #include <zucchini/ipc/queue.h>
+#include <zucchini/status/status.h>
+#include <zucchini/client/client.h>
 
 
 #define ZUC_TCP_SERVER_PORT 9998
@@ -36,11 +38,12 @@ typedef struct
     ZUC_UdpDatagram_t udp_datagram_buffer;
 
     ZUC_IpcQueue_t command_queue;
+    ZUC_ClientInterface_t client_interface;
     //ZUC_TcpSocket_t admin_socket;
     //ZUC_TcpServerSocket_t tcp_server_socket;
     //ZUC_TcpMessage_t tcp_message_buffer;
     
-    ZUC_Admin_t admin_area; 
+    ZUC_Admin_t admin_area;
 
     atomic_int terminate;
 
@@ -64,7 +67,7 @@ static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, struct kevent *eve
 
 
 __attribute__((cold))
-int32_t ZUC_CreateServer(void)
+int32_t ZUC_CreateServer(const char *name)
 {
     atomic_store(&ZUC_server.terminate, 0);
 
@@ -88,7 +91,6 @@ int32_t ZUC_CreateServer(void)
 
 
     //ZUC_server.admin_socket.filedescriptor = -1;
-    ZUC_InitializeAdminAdrea(&ZUC_server.admin_area);
     //ZUC_server.tcp_server_socket = ZUC_CreateTcpServerSocket(ZUC_TCP_SERVER_PORT);
     //if(-1 == ZUC_server.tcp_server_socket.filedescriptor)
     //{
@@ -96,17 +98,19 @@ int32_t ZUC_CreateServer(void)
     //} 
     //ZUC_ObserverFiledescriptor(&ZUC_server, ZUC_server.tcp_server_socket.filedescriptor, EVFILT_READ);
 
-    ZUC_server.command_queue = ZUC_CreateIpcQueue();
+    ZUC_server.command_queue = ZUC_CreateIpcQueue(name);
     if(!ZUC_server.command_queue)
     {
         printf("Unable to create Ipc Queue.\n");
         return -1;
     }
-    ZUC_ObserverFiledescriptor(&ZUC_server, ZUC_IpcQueueFiledescriptor(ZUC_server.command_queue), EVFILT_READ);
+
+    ZUC_server.client_interface = ZUC_CreateClientInterface(name);
     //ZUC_server.tcp_message_buffer.data = malloc(4096);
     //ZUC_server.tcp_message_buffer.size = 0;
     //ZUC_server.tcp_message_buffer.capacity = 4096;
 
+    ZUC_InitializeAdminAdrea(&ZUC_server.admin_area, name);
     return 0;
 }
 
@@ -149,12 +153,28 @@ __attribute__((hot))
 static void ZUC_EventLoop(ZUC_Server_t *server)
 {
     struct kevent events[ZUCCHINI_EVENTLOOP_NUMBER_OF_EVENTS];
+    struct timespec timeout = {
+        .tv_sec=0,
+        .tv_nsec=1000 * 1000 * 5
+    };
     const int result = kevent(
-        server->server_socket_kqueue.filedescriptor, NULL, 0, events, ZUCCHINI_EVENTLOOP_NUMBER_OF_EVENTS, NULL 
+        server->server_socket_kqueue.filedescriptor, NULL, 0, events, ZUCCHINI_EVENTLOOP_NUMBER_OF_EVENTS, &timeout 
     ); 
     for(int i=0;i<result;++i)
     {
         ZUC_EventLoopHandleEvent(&ZUC_server, &events[i]);
+    }
+    ZUC_IpcQueueResult_t command = ZUC_PopFromIpcQueue(ZUC_server.command_queue);
+    if(command.result >= 0)
+    {
+        ZUC_HandleAdminQueueItem(&ZUC_server.admin_area, command.item);
+    }
+
+    uint8_t client_message[1024];
+    uint16_t client_message_size;
+    if(0 == ZUC_ClientInterfaceReceive(server->client_interface, client_message, &client_message_size))
+    {
+        printf("Client-Message: %.*s\n", client_message_size, (char*)client_message);
     }
 }
 
@@ -182,15 +202,18 @@ static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, struct kevent *eve
             //
             if(0 == ZUC_UdpRecvFrom(&server->upd_server_socket, &ZUC_server.udp_datagram_buffer))
             {
-                printf("Datagramm: %s\n", ZUC_server.udp_datagram_buffer.data);
-            }
-        }
-        else if(fd == ZUC_IpcQueueFiledescriptor(server->command_queue))
-        {
-            ZUC_IpcQueueResult_t result = ZUC_PopFromIpcQueue(server->command_queue);
-            if(0 == result.result)
-            {
-                printf("Request: %s\n", result.item.data);
+                if(0 == ZUC_HandleUdpDatagram(&ZUC_server.admin_area, &ZUC_server.udp_datagram_buffer))
+                {
+                    const int32_t result = ZUC_ClientInterfaceSend(
+                        server->client_interface,
+                        ZUC_server.udp_datagram_buffer.data,
+                        ZUC_server.udp_datagram_buffer.size
+                    );
+                    if(result != 0)
+                    {
+                        printf("Error! Unable to send to local client.\n");
+                    }
+                }
             }
         }
         //else if(fd == ZUC_server.tcp_server_socket.filedescriptor)

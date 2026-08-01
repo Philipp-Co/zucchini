@@ -59,7 +59,6 @@ int32_t ZUC_UdpRecvFrom(ZUC_UdpServerSocket_t *socket, ZUC_UdpDatagram_t *datagr
 {
     struct sockaddr_in sender;
     socklen_t sender_len = sizeof(sender);
-    ZUC_UdpDatagram_t datagram;
 
     const ssize_t n = recvfrom(
         socket->filedescriptor,
@@ -69,13 +68,13 @@ int32_t ZUC_UdpRecvFrom(ZUC_UdpServerSocket_t *socket, ZUC_UdpDatagram_t *datagr
     );
     if(ZUC_UNLIKELY(n < 0))
     {
-        datagram.size = 0;
+        datagram_buffer->size = 0;
         goto error;
     }
     else
     {
-        datagram.source_address = sender;
-        datagram.size = (uint16_t)n;
+        datagram_buffer->source_address = sender;
+        datagram_buffer->size = (uint16_t)n;
     }
     return 0;
 error:

@@ -3,25 +3,27 @@
 
 #include <stdint.h>
 #include <netinet/in.h>
+#include <stdatomic.h>
 
 #include <zucchini/io/networking/tcp.h>
+#include <zucchini/io/networking/upd.h>
+#include <zucchini/ipc/queue.h>
+#include <zucchini/events/event.h>
+#include <zucchini/status/status.h>
 
 
 #define ZUCCHINI_ADMIN_MAX_CLIENTS 4
 
 typedef struct
 {
-    int a;
-} ZUC_UdpWhitelist_t;
-
-typedef struct
-{
-    ZUC_UdpWhitelist_t upd_whitelist;
+    ZUC_ServerStatusHandle_t status_handle;
 } ZUC_Admin_t;
 
 
-void ZUC_InitializeAdminAdrea(ZUC_Admin_t *area);
-void ZUC_OnAdminMessage(ZUC_TcpMessage_t message);
+void ZUC_InitializeAdminAdrea(ZUC_Admin_t *area, const char *name);
+void ZUC_HandleAdminQueueItem(ZUC_Admin_t *area, ZUC_IpcQueueItem_t item);
+
+int32_t ZUC_HandleUdpDatagram(ZUC_Admin_t *area, const ZUC_UdpDatagram_t *datagram);
 
 
 #endif
