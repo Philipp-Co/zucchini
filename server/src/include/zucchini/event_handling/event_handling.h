@@ -3,13 +3,14 @@
 
 #include <stdint.h>
 #include <time.h>
+#include <zucchini/utils/logger.h>
 
 typedef enum
 {
     ZUC_EVENT_TRIGGER_READ = 0,
 } ZUC_EventTrigger_t;
 
-int32_t ZUC_CreateEventHandling(void);
+int32_t ZUC_CreateEventHandling(ZUC_Logger_t root_logger);
 void ZUC_DestroyEventHandling(void);
 
 int32_t ZUC_EventHandlingObserve(int filedescriptor, ZUC_EventTrigger_t trigger);

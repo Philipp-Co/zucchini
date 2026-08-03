@@ -11,22 +11,23 @@
 #include <stdlib.h>
 
 
-ZUC_UdpServerSocket_t ZUC_CreateUdpServerSocket(uint16_t port)
+ZUC_UdpServerSocket_t ZUC_CreateUdpServerSocket(uint16_t port, ZUC_Logger_t logger)
 {
     ZUC_UdpServerSocket_t server = {
-        .filedescriptor=-1
+        .filedescriptor=-1,
+        .logger=ZUC_CreateChildLogger(logger, "udp-server")
     };
     const int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if(fd == -1)
     {
-        printf("Unable to create UDP socket: %s (%i)\n", strerror(errno), errno);
+        ZUC_LoggerError(server.logger, "Unable to create UDP socket: %s (%i)\n", strerror(errno), errno);
         return server;
     }
 
     const int reuse = 1;
     if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) == -1)
     {
-        printf("Unable to set SO_REUSEADDR: %s (%i)\n", strerror(errno), errno);
+        ZUC_LoggerError(server.logger, "Unable to set SO_REUSEADDR: %s (%i)\n", strerror(errno), errno);
         close(fd);
         return server;
     }
@@ -34,7 +35,7 @@ ZUC_UdpServerSocket_t ZUC_CreateUdpServerSocket(uint16_t port)
     const int flags = fcntl(fd, F_GETFL, 0);
     if(flags == -1 || fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
     {
-        printf("Unable to set UDP socket non-blocking: %s (%i)\n", strerror(errno), errno);
+        ZUC_LoggerError(server.logger, "Unable to set UDP socket non-blocking: %s (%i)\n", strerror(errno), errno);
         close(fd);
         return server;
     }
@@ -46,7 +47,7 @@ ZUC_UdpServerSocket_t ZUC_CreateUdpServerSocket(uint16_t port)
 
     if(bind(fd, (struct sockaddr *)&addr, sizeof(addr)) == -1)
     {
-        printf("Unable to bind UDP socket to port %i: %s (%i)\n", (int)port, strerror(errno), errno);
+        ZUC_LoggerError(server.logger, "Unable to bind UDP socket to port %i: %s (%i)\n", (int)port, strerror(errno), errno);
         close(fd);
         return server;
     }
@@ -91,7 +92,7 @@ int32_t ZUC_UdpSendTo(ZUC_UdpServerSocket_t *socket, const struct sockaddr_in *d
     );
     if(n < 0)
     {
-        printf("Unable to send UDP datagram: %s (%i)\n", strerror(errno), errno);
+        ZUC_LoggerError(socket->logger, "Unable to send UDP datagram: %s (%i)\n", strerror(errno), errno);
         return -1;
     }
     return 0;

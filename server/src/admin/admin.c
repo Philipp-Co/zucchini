@@ -12,8 +12,9 @@ static uint64_t ZUC_DecodeBigEndianUint64(const uint8_t *data)
 }
 
 
-void ZUC_InitializeAdminAdrea(ZUC_Admin_t *area, const char *name)
+void ZUC_InitializeAdminAdrea(ZUC_Admin_t *area, const char *name, ZUC_Logger_t root)
 {
+    area->logger = ZUC_CreateChildLogger(root, name);
     area->status_handle = ZUC_CreateServerStatus(name);
     ZUC_ServerStatusSetPid(area->status_handle, getpid());
 }
@@ -22,7 +23,7 @@ void ZUC_HandleAdminQueueItem(ZUC_Admin_t *area, ZUC_IpcQueueItem_t item)
 {
     if(item.size != sizeof(ZUC_Event_t))
     {
-        printf("Ignoring IPC queue item: unexpected size %u (expected %zu)\n", item.size, sizeof(ZUC_Event_t));
+        ZUC_LoggerError(area->logger, "Ignoring IPC queue item: unexpected size %u (expected %zu)\n", item.size, sizeof(ZUC_Event_t));
         return;
     }
 
@@ -32,15 +33,15 @@ void ZUC_HandleAdminQueueItem(ZUC_Admin_t *area, ZUC_IpcQueueItem_t item)
     switch(event.type)
     {
         case ZUC_EVENT_WHITELIST_SOURCE_ADD:
-            printf("Admin event: whitelist add source = 0x%llx\n", (unsigned long long)event.payload.whitelist_source_add.source_id);
+            ZUC_LoggerInfo(area->logger, "Admin event: whitelist add source = 0x%llx\n", (unsigned long long)event.payload.whitelist_source_add.source_id);
             ZUC_ServerStatusWhitelistAdd(area->status_handle, event.payload.whitelist_source_add.source_id);
             break;
         case ZUC_EVENT_WHITELIST_SOURCE_REMOVE:
-            printf("Admin event: whitelist remove source = 0x%llx\n", (unsigned long long)event.payload.whitelist_source_remove.source_id);
+            ZUC_LoggerInfo(area->logger, "Admin event: whitelist remove source = 0x%llx\n", (unsigned long long)event.payload.whitelist_source_remove.source_id);
             ZUC_ServerStatusWhitelistRemove(area->status_handle, event.payload.whitelist_source_remove.source_id);
             break;
         default:
-            printf("Unknown admin event type: %d\n", (int)event.type);
+            ZUC_LoggerInfo(area->logger, "Unknown admin event type: %d\n", (int)event.type);
             break;
     }
 }

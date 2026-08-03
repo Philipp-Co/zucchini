@@ -11,6 +11,8 @@ int main(int argc, char **argv)
 {
     (void)argc;
     (void)argv;
+    
+    setvbuf(stdout, NULL, _IOLBF, 0);
 
     ZUC_Client_t client = ZUC_CreateClient(ZUC_TEST_RING_BUFFER_NAME);
 

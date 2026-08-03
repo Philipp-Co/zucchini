@@ -35,7 +35,7 @@ void ZUC_DestroyLogger(ZUC_Logger_t *logger)
 
 static void ZUC_LoggerLog(ZUC_Logger_t logger, const char *level, const char *format, va_list args)
 {
-    printf("[%s] %s: ", level, logger->name);
+    printf("[%s][%s] - ", level, logger->name);
     vprintf(format, args);
     printf("\n");
 }

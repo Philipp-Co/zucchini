@@ -9,14 +9,16 @@
 #define ZUC_EVENT_HANDLING_MAX_EVENTS 32
 
 static int ZUC_event_handling_epoll = -1;
+static ZUC_Logger_t ZUC_event_handling_logger = NULL;
 
 
-int32_t ZUC_CreateEventHandling(void)
+int32_t ZUC_CreateEventHandling(ZUC_Logger_t root_logger)
 {
+    ZUC_event_handling_logger = ZUC_CreateChildLogger(root_logger, "event-handling"); 
     ZUC_event_handling_epoll = epoll_create1(0);
     if(ZUC_event_handling_epoll == -1)
     {
-        printf("Unable to create epoll instance: %s (%i)\n", strerror(errno), errno);
+        ZUC_LoggerError(ZUC_event_handling_logger, "Unable to create epoll instance: %s (%i)\n", strerror(errno), errno);
         return -1;
     }
     return 0;
@@ -46,7 +48,7 @@ int32_t ZUC_EventHandlingObserve(int filedescriptor, ZUC_EventTrigger_t trigger)
 
     if(epoll_ctl(ZUC_event_handling_epoll, EPOLL_CTL_ADD, filedescriptor, &event) == -1)
     {
-        printf("Unable to attach for epoll event: %s (%i)\n", strerror(errno), errno);
+        ZUC_LoggerInfo(ZUC_event_handling_logger, "Unable to attach for epoll event: %s (%i)\n", strerror(errno), errno);
         return -1;
     }
     return 0;
@@ -74,7 +76,7 @@ int32_t ZUC_EventHandlingWait(int *out_filedescriptors, int32_t max_filedescript
         {
             return 0;
         }
-        printf("Error while waiting on epoll: %s (%i)\n", strerror(errno), errno);
+        ZUC_LoggerError(ZUC_event_handling_logger, "Error while waiting on epoll: %s (%i)\n", strerror(errno), errno);
         return -1;
     }
 

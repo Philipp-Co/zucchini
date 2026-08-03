@@ -9,14 +9,17 @@
 #define ZUC_EVENT_HANDLING_MAX_EVENTS 32
 
 static int ZUC_event_handling_kqueue = -1;
+static ZUC_Logger_t ZUC_event_handling_logger = NULL;
 
 
-int32_t ZUC_CreateEventHandling(void)
+int32_t ZUC_CreateEventHandling(ZUC_Logger_t root_logger)
 {
+    ZUC_event_handling_logger = ZUC_CreateChildLogger(root_logger, "event-handling"); 
+
     ZUC_event_handling_kqueue = kqueue();
     if(ZUC_event_handling_kqueue == -1)
     {
-        printf("Unable to create kqueue instance\n");
+        ZUC_LoggerError(ZUC_event_handling_logger, "Unable to create kqueue instance\n");
         return -1;
     }
     return 0;
@@ -44,7 +47,7 @@ int32_t ZUC_EventHandlingObserve(int filedescriptor, ZUC_EventTrigger_t trigger)
     EV_SET(&event, filedescriptor, ZUC_TranslateTrigger(trigger), EV_ADD | EV_CLEAR, 0, 0, NULL);
     if(kevent(ZUC_event_handling_kqueue, &event, 1, NULL, 0, NULL) == -1)
     {
-        printf("Unable to attach for kqeueu Event...\n");
+        ZUC_LoggerError(ZUC_event_handling_logger, "Unable to attach for kqueue Event...\n");
         return -1;
     }
     return 0;
@@ -61,7 +64,7 @@ int32_t ZUC_EventHandlingWait(int *out_filedescriptors, int32_t max_filedescript
         {
             return 0;
         }
-        printf("Error while reading from kqueue: %s (%i)\n", strerror(errno), errno);
+        ZUC_LoggerError(ZUC_event_handling_logger, "Error while reading from kqueue: %s (%i)\n", strerror(errno), errno);
         return -1;
     }
 

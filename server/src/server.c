@@ -11,6 +11,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <zucchini/utils/logger.h>
 #include <zucchini/server.h>
 #include <zucchini/io/networking/upd.h>
 #include <zucchini/admin/admin.h>
@@ -26,6 +27,8 @@
 
 typedef struct
 {
+    ZUC_Logger_t logger;
+
     ZUC_UdpServerSocket_t upd_server_socket;
     ZUC_UdpDatagram_t udp_datagram_buffer;
 
@@ -50,14 +53,16 @@ static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, int filedescriptor
 __attribute__((cold))
 int32_t ZUC_CreateServer(const char *name)
 {
+    ZUC_server.logger = ZUC_CreateLogger("server");
+
     atomic_store(&ZUC_server.terminate, 0);
 
-    if(-1 == ZUC_CreateEventHandling())
+    if(-1 == ZUC_CreateEventHandling(ZUC_server.logger))
     {
         return -1;
     }
 
-    ZUC_server.upd_server_socket = ZUC_CreateUdpServerSocket(ZUC_UDP_SERVER_PORT);
+    ZUC_server.upd_server_socket = ZUC_CreateUdpServerSocket(ZUC_UDP_SERVER_PORT, ZUC_server.logger);
     if(-1 == ZUC_server.upd_server_socket.filedescriptor)
     {
         return -1;
@@ -70,13 +75,13 @@ int32_t ZUC_CreateServer(const char *name)
     ZUC_server.command_queue = ZUC_CreateIpcQueue(name);
     if(!ZUC_server.command_queue)
     {
-        printf("Unable to create Ipc Queue.\n");
+        ZUC_LoggerInfo(ZUC_server.logger, "Unable to create Ipc Queue.\n");
         return -1;
     }
 
     ZUC_server.client_interface = ZUC_CreateClientInterface(name);
 
-    ZUC_InitializeAdminAdrea(&ZUC_server.admin_area, name);
+    ZUC_InitializeAdminAdrea(&ZUC_server.admin_area, name, ZUC_server.logger);
     return 0;
 }
 
@@ -174,7 +179,7 @@ static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, int filedescriptor
                 );
                 if(result != 0)
                 {
-                    printf("Error! Unable to send to local client.\n");
+                    ZUC_LoggerError(ZUC_server.logger, "Unable to send UDP Datagram to local Client.\n");
                 }
             }
         }
