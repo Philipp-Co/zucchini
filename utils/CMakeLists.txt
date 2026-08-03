@@ -1,10 +1,11 @@
 add_library(zucchini_utils STATIC
-    src/macos/ipc/key.c
-    src/macos/ipc/pmutex.c
-    src/macos/ipc/queue.c
-    src/macos/ipc/shared_memory.c
+    src/ipc/key.c
+    src/ipc/pmutex.c
+    src/ipc/queue.c
+    src/ipc/shared_memory.c
     src/ipc/ring_buffer.c
     src/status/status.c
+    src/logger/logger.c
 )
 
 target_include_directories(zucchini_utils PUBLIC

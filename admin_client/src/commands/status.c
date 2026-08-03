@@ -22,7 +22,8 @@ int32_t ZUC_AdminCommand_Status(ZUC_IpcQueue_t queue, int argc, char **argv)
     {
         if(whitelist[i].code != 0)
         {
-            printf("    [%d] 0x%llx  %s\n", i, (unsigned long long)whitelist[i].code, inet_ntoa(whitelist[i].ip_address));
+            printf("    [%d] 0x%llx  %s:%u\n", i, (unsigned long long)whitelist[i].code,
+                inet_ntoa(whitelist[i].address.sin_addr), (unsigned)ntohs(whitelist[i].address.sin_port));
         }
     }
 

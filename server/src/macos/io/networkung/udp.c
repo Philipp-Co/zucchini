@@ -81,3 +81,19 @@ error:
     return -1;
 }
 
+int32_t ZUC_UdpSendTo(ZUC_UdpServerSocket_t *socket, const struct sockaddr_in *destination, const uint8_t *data, uint16_t size)
+{
+    const ssize_t n = sendto(
+        socket->filedescriptor,
+        data, size,
+        0,
+        (const struct sockaddr *)destination, sizeof(*destination)
+    );
+    if(n < 0)
+    {
+        printf("Unable to send UDP datagram: %s (%i)\n", strerror(errno), errno);
+        return -1;
+    }
+    return 0;
+}
+

@@ -83,11 +83,12 @@ ZUC_IpcQueueResult_t ZUC_PopFromIpcQueue(ZUC_IpcQueue_t queue)
     }
     else
     {
+        printf("Result fomr command Queue\n");
         memcpy(item.data, message.mtext, (size_t)n);
         item.size = (uint16_t)n;
         return_value = 0;
     }
-
+    
     ZUC_IpcQueueResult_t result = {
         .item = item,
         .result = return_value

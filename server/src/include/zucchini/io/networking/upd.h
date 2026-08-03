@@ -19,6 +19,7 @@ typedef struct
 
 ZUC_UdpServerSocket_t ZUC_CreateUdpServerSocket(uint16_t port);
 int32_t ZUC_UdpRecvFrom(ZUC_UdpServerSocket_t *socket, ZUC_UdpDatagram_t *datagram_buffer);
+int32_t ZUC_UdpSendTo(ZUC_UdpServerSocket_t *socket, const struct sockaddr_in *destination, const uint8_t *data, uint16_t size);
 
 
 #endif

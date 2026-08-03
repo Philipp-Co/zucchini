@@ -2,7 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
-#include <libkern/OSByteOrder.h>
+
+static uint64_t ZUC_DecodeBigEndianUint64(const uint8_t *data)
+{
+    return ((uint64_t)data[0] << 56) | ((uint64_t)data[1] << 48) |
+           ((uint64_t)data[2] << 40) | ((uint64_t)data[3] << 32) |
+           ((uint64_t)data[4] << 24) | ((uint64_t)data[5] << 16) |
+           ((uint64_t)data[6] << 8)  | ((uint64_t)data[7]);
+}
 
 
 void ZUC_InitializeAdminAdrea(ZUC_Admin_t *area, const char *name)
@@ -45,15 +52,13 @@ int32_t ZUC_HandleUdpDatagram(ZUC_Admin_t *area, const ZUC_UdpDatagram_t *datagr
         return -1;
     }
 
-    uint64_t code;
-    memcpy(&code, datagram->data, sizeof(code));
-    code = OSSwapBigToHostInt64(code);
+    const uint64_t code = ZUC_DecodeBigEndianUint64(datagram->data);
 
     if(!area->status_handle || !ZUC_ServerStatusWhitelistContains(area->status_handle, code))
     {
         return -1;
     }
 
-    ZUC_ServerStatusWhitelistRecordSource(area->status_handle, code, datagram->source_address.sin_addr);
+    ZUC_ServerStatusWhitelistRecordSource(area->status_handle, code, datagram->source_address);
     return 0;
 }

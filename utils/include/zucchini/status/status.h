@@ -10,7 +10,7 @@
 typedef struct
 {
     uint64_t code;
-    struct in_addr ip_address;
+    struct sockaddr_in address;
 } ZUC_WhitelistEntry_t;
 
 struct ZUC_ServerStatusHandle;
@@ -25,7 +25,7 @@ void ZUC_ServerStatusSetPid(ZUC_ServerStatusHandle_t handle, pid_t pid);
 void ZUC_ServerStatusWhitelistAdd(ZUC_ServerStatusHandle_t handle, uint64_t code);
 void ZUC_ServerStatusWhitelistRemove(ZUC_ServerStatusHandle_t handle, uint64_t code);
 int32_t ZUC_ServerStatusWhitelistContains(ZUC_ServerStatusHandle_t handle, uint64_t code);
-void ZUC_ServerStatusWhitelistRecordSource(ZUC_ServerStatusHandle_t handle, uint64_t code, struct in_addr ip_address);
+void ZUC_ServerStatusWhitelistRecordSource(ZUC_ServerStatusHandle_t handle, uint64_t code, struct sockaddr_in address);
 void ZUC_ServerStatusGetWhitelist(ZUC_ServerStatusHandle_t handle, ZUC_WhitelistEntry_t out_whitelist[ZUC_SERVER_STATUS_MAX_WHITELIST_ENTRIES]);
 
 #endif

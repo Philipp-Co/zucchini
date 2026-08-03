@@ -1,0 +1,8 @@
+services:
+  zucchini:
+    build:
+      context: .
+      dockerfile: test/docker/Dockerfile
+    image: zucchini-loopback
+    ports:
+      - "${ZUC_UDP_PORT}:9999/udp"

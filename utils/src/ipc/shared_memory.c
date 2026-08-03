@@ -26,14 +26,16 @@ ZUC_SharedMemory_t ZUC_CreateSharedMemory(const char *name, size_t size)
     if(key == -1)
     {
         printf("Unable to derive key for shared memory '%s': %s (%i)\n", name, strerror(errno), errno);
-        return shared_memory;
+        free(shared_memory);
+        return NULL;
     }
 
     const int shmid = shmget(key, size, IPC_CREAT | 0666);
     if(shmid == -1)
     {
         printf("Unable to create/open shared memory '%s': %s (%i)\n", name, strerror(errno), errno);
-        return shared_memory;
+        free(shared_memory);
+        return NULL;
     }
     shared_memory->shmid = shmid;
 
@@ -41,7 +43,8 @@ ZUC_SharedMemory_t ZUC_CreateSharedMemory(const char *name, size_t size)
     if(address == (void *)-1)
     {
         printf("Unable to attach shared memory '%s': %s (%i)\n", name, strerror(errno), errno);
-        return shared_memory;
+        free(shared_memory);
+        return NULL;
     }
 
     shared_memory->address = address;
