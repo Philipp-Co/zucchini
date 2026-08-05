@@ -4,5 +4,5 @@ add_executable(zucchini_local_client_test
 
 target_link_libraries(zucchini_local_client_test
     PUBLIC
-        zucchini_client
+        zucchini_api
 )

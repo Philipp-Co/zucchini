@@ -10,7 +10,7 @@ add_executable(zucchini_server
     src/main.c
     src/admin/admin.c
     src/server.c
-    src/macos/io/networkung/udp.c
+    src/io/networking/udp.c
     src/client/client.c
     ${ZUC_EVENT_HANDLING_SOURCE}
 )
@@ -27,8 +27,7 @@ target_link_libraries(zucchini_server
 )
 
 set_source_files_properties(
-    src/macos/io/networkung/udp.c
-    src/macos/io/networkung/tcp.c
+    src/io/networking/udp.c
     PROPERTIES COMPILE_OPTIONS "-O2"
 )
 

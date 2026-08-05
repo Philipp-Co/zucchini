@@ -1,6 +1,7 @@
 add_executable(zucchini_admin_client
     src/main.c
     src/hex.c
+    src/notify.c
     src/commands/whitelist_add.c
     src/commands/whitelist_remove.c
     src/commands/status.c

@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <signal.h>
 
 #include <zucchini/utils/logger.h>
 #include <zucchini/server.h>
@@ -47,7 +48,7 @@ static ZUC_Server_t ZUC_server = {0};
 
 
 static void ZUC_EventLoop(ZUC_Server_t *server);
-static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, int filedescriptor);
+static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, ZUC_EventHandlingResult_t event);
 
 
 __attribute__((cold))
@@ -68,6 +69,7 @@ int32_t ZUC_CreateServer(const char *name)
         return -1;
     }
     ZUC_EventHandlingObserve(ZUC_server.upd_server_socket.filedescriptor, ZUC_EVENT_TRIGGER_READ);
+    ZUC_EventHandlingObserve(SIGUSR1, ZUC_EVENT_TRIGGER_SIGNAL);
     ZUC_server.udp_datagram_buffer.capacity = sizeof(ZUC_server.udp_message_buffer);
     ZUC_server.udp_datagram_buffer.size = 0;
     ZUC_server.udp_datagram_buffer.data = ZUC_server.udp_message_buffer;
@@ -110,29 +112,15 @@ void ZUC_TerminateServer(void)
 __attribute__((hot))
 static void ZUC_EventLoop(ZUC_Server_t *server)
 {
-    int filedescriptors[ZUCCHINI_EVENTLOOP_NUMBER_OF_EVENTS];
+    ZUC_EventHandlingResult_t events[ZUCCHINI_EVENTLOOP_NUMBER_OF_EVENTS];
     struct timespec timeout = {
         .tv_sec=0,
         .tv_nsec=1000 * 1000 * 5
     };
-    const int32_t result = ZUC_EventHandlingWait(filedescriptors, ZUCCHINI_EVENTLOOP_NUMBER_OF_EVENTS, &timeout);
+    const int32_t result = ZUC_EventHandlingWait(events, ZUCCHINI_EVENTLOOP_NUMBER_OF_EVENTS, &timeout);
     for(int i=0;i<result;++i)
     {
-        ZUC_EventLoopHandleEvent(&ZUC_server, filedescriptors[i]);
-    }
-    
-    while(1)
-    {
-        ZUC_IpcQueueResult_t command = ZUC_PopFromIpcQueue(ZUC_server.command_queue);
-        if(command.result >= 0)
-        {
-            ZUC_HandleAdminQueueItem(&ZUC_server.admin_area, command.item);
-        }
-        else
-        {
-            break;
-        }
-        ZUC_FreeIpcQueueItem(&command.item);
+        ZUC_EventLoopHandleEvent(&ZUC_server, events[i]);
     }
     
     uint8_t client_message[1024];
@@ -160,29 +148,60 @@ static void ZUC_EventLoop(ZUC_Server_t *server)
     }
 }
 
-__attribute__((hot))
-static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, int filedescriptor)
+__attribute__((cold))
+static void ZUC_HandleAdminEvent(ZUC_Server_t *server, ZUC_EventHandlingResult_t event)
 {
-    if(filedescriptor == server->upd_server_socket.filedescriptor)
+    if(SIGUSR1 == event.identifier)
     {
-        //
-        // User Stuff...
-        //
-        while(0 == ZUC_UdpRecvFrom(&server->upd_server_socket, &ZUC_server.udp_datagram_buffer))
+        while(1)
         {
-            if(0 == ZUC_HandleUdpDatagram(&ZUC_server.admin_area, &ZUC_server.udp_datagram_buffer))
+            ZUC_IpcQueueResult_t command = ZUC_PopFromIpcQueue(server->command_queue);
+            if(command.result >= 0)
             {
-                const int32_t result = ZUC_ClientInterfaceSend(
-                    server->client_interface,
-                    ZUC_server.udp_datagram_buffer.data + sizeof(uint64_t),
-                    ZUC_server.udp_datagram_buffer.size - sizeof(uint64_t)
-                );
-                if(result != 0)
+                ZUC_HandleAdminQueueItem(&ZUC_server.admin_area, command.item);
+            }
+            else
+            {
+                break;
+            }
+            ZUC_FreeIpcQueueItem(&command.item);
+        }
+    }
+}
+
+__attribute__((hot))
+static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, ZUC_EventHandlingResult_t event)
+{
+    switch(event.trigger)
+    {
+        case ZUC_EVENT_TRIGGER_READ:
+            if(event.identifier == server->upd_server_socket.filedescriptor)
+            {
+                //
+                // User Stuff...
+                //
+                while(0 == ZUC_UdpRecvFrom(&server->upd_server_socket, &ZUC_server.udp_datagram_buffer))
                 {
-                    ZUC_LoggerError(ZUC_server.logger, "Unable to send UDP Datagram to local Client.\n");
+                    if(0 == ZUC_HandleUdpDatagram(&ZUC_server.admin_area, &ZUC_server.udp_datagram_buffer))
+                    {
+                        const int32_t result = ZUC_ClientInterfaceSend(
+                            server->client_interface,
+                            ZUC_server.udp_datagram_buffer.data + sizeof(uint64_t),
+                            ZUC_server.udp_datagram_buffer.size - sizeof(uint64_t)
+                        );
+                        if(result != 0)
+                        {
+                            ZUC_LoggerError(ZUC_server.logger, "Unable to send UDP Datagram to local Client.\n");
+                        }
+                    }
                 }
             }
-        }
+            break;
+        case ZUC_EVENT_TRIGGER_SIGNAL:
+            ZUC_HandleAdminEvent(&ZUC_server, event);
+            break;
+         default:
+            break; 
     }
     return 0;
 }

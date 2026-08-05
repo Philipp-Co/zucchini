@@ -1,5 +1,6 @@
 #include <zucchini/admin_client/commands.h>
 #include <zucchini/admin_client/hex.h>
+#include <zucchini/admin_client/notify.h>
 #include <zucchini/events/event.h>
 
 #include <stdio.h>
@@ -28,5 +29,6 @@ int32_t ZUC_AdminCommand_WhitelistAdd(ZUC_IpcQueue_t queue, int argc, char **arg
     item.size = (uint16_t)sizeof(event);
 
     ZUC_PushToIpcQueue(queue, item);
+    ZUC_AdminNotifyServer();
     return 0;
 }
