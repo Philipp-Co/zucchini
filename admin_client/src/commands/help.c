@@ -2,8 +2,9 @@
 
 #include <stdio.h>
 
-int32_t ZUC_AdminCommand_Help(ZUC_IpcQueue_t queue, int argc, char **argv)
+int32_t ZUC_AdminCommand_Help(const char *server_name, ZUC_IpcQueue_t queue, int argc, char **argv)
 {
+    (void)server_name;
     (void)queue;
     (void)argc;
     (void)argv;

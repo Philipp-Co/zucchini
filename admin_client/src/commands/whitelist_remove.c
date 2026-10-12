@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 
-int32_t ZUC_AdminCommand_WhitelistRemove(ZUC_IpcQueue_t queue, int argc, char **argv)
+int32_t ZUC_AdminCommand_WhitelistRemove(const char *server_name, ZUC_IpcQueue_t queue, int argc, char **argv)
 {
     if(argc < 1)
     {
@@ -29,6 +29,6 @@ int32_t ZUC_AdminCommand_WhitelistRemove(ZUC_IpcQueue_t queue, int argc, char **
     item.size = (uint16_t)sizeof(event);
 
     ZUC_PushToIpcQueue(queue, item);
-    ZUC_AdminNotifyServer();
+    ZUC_AdminNotifyServer(server_name);
     return 0;
 }

@@ -23,9 +23,6 @@
 #include <zucchini/event_handling/event_handling.h>
 
 
-#define ZUC_UDP_SERVER_PORT 9999
-
-
 typedef struct
 {
     ZUC_Logger_t logger;
@@ -52,7 +49,7 @@ static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, ZUC_EventHandlingR
 
 
 __attribute__((cold))
-int32_t ZUC_CreateServer(const char *name)
+int32_t ZUC_CreateServer(const char *name, uint16_t port)
 {
     ZUC_server.logger = ZUC_CreateLogger("server");
 
@@ -63,7 +60,7 @@ int32_t ZUC_CreateServer(const char *name)
         return -1;
     }
 
-    ZUC_server.upd_server_socket = ZUC_CreateUdpServerSocket(ZUC_UDP_SERVER_PORT, ZUC_server.logger);
+    ZUC_server.upd_server_socket = ZUC_CreateUdpServerSocket(port,ZUC_server.logger);
     if(-1 == ZUC_server.upd_server_socket.filedescriptor)
     {
         return -1;

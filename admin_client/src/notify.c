@@ -5,9 +5,9 @@
 #include <signal.h>
 #include <unistd.h>
 
-int32_t ZUC_AdminNotifyServer(void)
+int32_t ZUC_AdminNotifyServer(const char *server_name)
 {
-    ZUC_ServerStatusHandle_t handle = ZUC_CreateServerStatus(ZUC_ADMIN_SERVER_NAME);
+    ZUC_ServerStatusHandle_t handle = ZUC_CreateServerStatus(server_name);
     if(!handle)
     {
         return -1;

@@ -3,6 +3,6 @@
 
 #include <stdint.h>
 
-int32_t ZUC_AdminNotifyServer(void);
+int32_t ZUC_AdminNotifyServer(const char *server_name);
 
 #endif
