@@ -24,7 +24,7 @@ typedef struct
 void ZUC_InitializeAdminAdrea(ZUC_Admin_t *area, const char *name, ZUC_Logger_t root);
 void ZUC_HandleAdminQueueItem(ZUC_Admin_t *area, ZUC_IpcQueueItem_t item);
 
-int32_t ZUC_HandleUdpDatagram(ZUC_Admin_t *area, const ZUC_UdpDatagram_t *datagram);
+int32_t ZUC_HandleUdpDatagram(ZUC_Admin_t *area, const ZUC_UdpDatagram_t *datagram, uint64_t *out_source);
 
 
 #endif

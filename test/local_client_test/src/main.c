@@ -36,13 +36,14 @@ int main(int argc, char **argv)
     uint8_t rx_buffer[ZUC_TEST_BUFFER_SIZE];
     uint8_t tx_buffer[ZUC_TEST_BUFFER_SIZE];
     uint16_t size;
+    uint64_t source;
     for(;;)
     {
-        while(0 == ZUC_ApiReceive(api, rx_buffer, &size))
+        while(0 == ZUC_ApiReceive(api, &source, rx_buffer, &size))
         {
-            printf("Received %u bytes: %.*s\n", size, size, (char*)rx_buffer);
-            const int len = snprintf((char*)tx_buffer, sizeof(tx_buffer), "Thanks for: %.*s", size, rx_buffer);
-            ZUC_ApiSend(api, tx_buffer, len);
+            printf("Received %u bytes from 0x%llx: %.*s\n", size, (unsigned long long)source, size, (char*)rx_buffer);
+            const int len = snprintf((char*)tx_buffer, ZUC_MESSAGE_MAX_PAYLOAD, "Thanks for: %.*s", size, rx_buffer);
+            ZUC_ApiSendTo(api, source, tx_buffer, len);
         }
         ZUC_ApiWait(api, 1000);
     }

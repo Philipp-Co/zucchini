@@ -18,6 +18,7 @@
 #include <zucchini/admin/admin.h>
 #include <zucchini/definitions.h>
 #include <zucchini/ipc/queue.h>
+#include <zucchini/ipc/message.h>
 #include <zucchini/status/status.h>
 #include <zucchini/client/client.h>
 #include <zucchini/event_handling/event_handling.h>
@@ -46,6 +47,8 @@ static ZUC_Server_t ZUC_server = {0};
 
 static void ZUC_EventLoop(ZUC_Server_t *server);
 static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, ZUC_EventHandlingResult_t event);
+static void ZUC_BroadcastMessage(ZUC_Server_t *server, const ZUC_WhitelistEntry_t *whitelist, const uint8_t *data, uint16_t size);
+static void ZUC_UnicastMessage(ZUC_Server_t *server, uint64_t target, const uint8_t *data, uint16_t size);
 
 
 __attribute__((cold))
@@ -120,29 +123,54 @@ static void ZUC_EventLoop(ZUC_Server_t *server)
         ZUC_EventLoopHandleEvent(&ZUC_server, events[i]);
     }
     
-    uint8_t client_message[1024];
+    uint8_t client_message[ZUC_MESSAGE_MAX_PAYLOAD];
     uint16_t client_message_size;
-    while(1)
+    uint64_t target;
+    int32_t whitelist_loaded = 0;
+    ZUC_WhitelistEntry_t whitelist[ZUC_SERVER_STATUS_MAX_WHITELIST_ENTRIES];
+    while(0 == ZUC_ClientInterfaceReceive(server->client_interface, &target, client_message, &client_message_size))
     {
-        if(0 == ZUC_ClientInterfaceReceive(server->client_interface, client_message, &client_message_size))
+        if(ZUC_MESSAGE_BROADCAST == target)
         {
-            ZUC_WhitelistEntry_t whitelist[ZUC_SERVER_STATUS_MAX_WHITELIST_ENTRIES];
-            ZUC_ServerStatusGetWhitelist(server->admin_area.status_handle, whitelist);
-            for(int i = 0; i < ZUC_SERVER_STATUS_MAX_WHITELIST_ENTRIES; ++i)
+            if(!whitelist_loaded)
             {
-                if(whitelist[i].code == 0 || whitelist[i].address.sin_addr.s_addr == 0)
-                {
-                    continue;
-                }
-
-                ZUC_UdpSendTo(&server->upd_server_socket, &whitelist[i].address, client_message, client_message_size);
+                ZUC_ServerStatusGetWhitelist(server->admin_area.status_handle, whitelist);
+                whitelist_loaded = 1;
             }
+            ZUC_BroadcastMessage(server, whitelist, client_message, client_message_size);
         }
         else
         {
-            break;
+            ZUC_UnicastMessage(server, target, client_message, client_message_size);
         }
     }
+}
+
+__attribute__((hot))
+static void ZUC_BroadcastMessage(ZUC_Server_t *server, const ZUC_WhitelistEntry_t *whitelist, const uint8_t *data, uint16_t size)
+{
+    for(int i = 0; i < ZUC_SERVER_STATUS_MAX_WHITELIST_ENTRIES; ++i)
+    {
+        if(whitelist[i].code == 0 || whitelist[i].address.sin_addr.s_addr == 0)
+        {
+            continue;
+        }
+
+        ZUC_UdpSendTo(&server->upd_server_socket, &whitelist[i].address, data, size);
+    }
+}
+
+__attribute__((hot))
+static void ZUC_UnicastMessage(ZUC_Server_t *server, uint64_t target, const uint8_t *data, uint16_t size)
+{
+    struct sockaddr_in address;
+    if(0 != ZUC_ServerStatusWhitelistLookup(server->admin_area.status_handle, target, &address))
+    {
+        ZUC_LoggerError(server->logger, "Dropping message: unknown or unreachable target 0x%llx\n", (unsigned long long)target);
+        return;
+    }
+
+    ZUC_UdpSendTo(&server->upd_server_socket, &address, data, size);
 }
 
 __attribute__((cold))
@@ -177,12 +205,14 @@ static int32_t ZUC_EventLoopHandleEvent(ZUC_Server_t *server, ZUC_EventHandlingR
                 //
                 // User Stuff...
                 //
+                uint64_t source;
                 while(0 == ZUC_UdpRecvFrom(&server->upd_server_socket, &ZUC_server.udp_datagram_buffer))
                 {
-                    if(0 == ZUC_HandleUdpDatagram(&ZUC_server.admin_area, &ZUC_server.udp_datagram_buffer))
+                    if(0 == ZUC_HandleUdpDatagram(&ZUC_server.admin_area, &ZUC_server.udp_datagram_buffer, &source))
                     {
                         const int32_t result = ZUC_ClientInterfaceSend(
                             server->client_interface,
+                            source,
                             ZUC_server.udp_datagram_buffer.data + sizeof(uint64_t),
                             ZUC_server.udp_datagram_buffer.size - sizeof(uint64_t)
                         );

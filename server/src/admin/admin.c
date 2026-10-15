@@ -46,7 +46,7 @@ void ZUC_HandleAdminQueueItem(ZUC_Admin_t *area, ZUC_IpcQueueItem_t item)
     }
 }
 
-int32_t ZUC_HandleUdpDatagram(ZUC_Admin_t *area, const ZUC_UdpDatagram_t *datagram)
+int32_t ZUC_HandleUdpDatagram(ZUC_Admin_t *area, const ZUC_UdpDatagram_t *datagram, uint64_t *out_source)
 {
     if(datagram->size < sizeof(uint64_t))
     {
@@ -61,5 +61,6 @@ int32_t ZUC_HandleUdpDatagram(ZUC_Admin_t *area, const ZUC_UdpDatagram_t *datagr
     }
 
     ZUC_ServerStatusWhitelistRecordSource(area->status_handle, code, datagram->source_address);
+    *out_source = code;
     return 0;
 }

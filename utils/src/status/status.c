@@ -187,3 +187,28 @@ int32_t ZUC_ServerStatusWhitelistContains(ZUC_ServerStatusHandle_t handle, uint6
     ZUC_PMutexUnlock(handle->mutex);
     return found;
 }
+
+int32_t ZUC_ServerStatusWhitelistLookup(ZUC_ServerStatusHandle_t handle, uint64_t code, struct sockaddr_in *out_address)
+{
+    if(!handle->status || code == 0)
+    {
+        return -1;
+    }
+
+    ZUC_PMutexLock(handle->mutex);
+    int32_t result = -1;
+    for(int i = 0; i < ZUC_SERVER_STATUS_MAX_WHITELIST_ENTRIES; ++i)
+    {
+        if(handle->status->whitelist[i].code == code)
+        {
+            if(handle->status->whitelist[i].address.sin_addr.s_addr != 0)
+            {
+                *out_address = handle->status->whitelist[i].address;
+                result = 0;
+            }
+            break;
+        }
+    }
+    ZUC_PMutexUnlock(handle->mutex);
+    return result;
+}

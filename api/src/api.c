@@ -102,12 +102,45 @@ int32_t ZUC_ApiWait(ZUC_Api_t api, int32_t timeout_ms)
     return 0;
 }
 
-int32_t ZUC_ApiReceive(ZUC_Api_t api, void *out_data, uint16_t *out_size)
+int32_t ZUC_ApiReceive(ZUC_Api_t api, uint64_t *out_source, void *out_data, uint16_t *out_size)
 {
-    return ZUC_RingBufferPop(api->receive_ring_buffer, out_data, out_size);
+    uint8_t message[ZUC_RING_BUFFER_SLOT_SIZE];
+    uint16_t message_size;
+    if(0 != ZUC_RingBufferPop(api->receive_ring_buffer, message, &message_size))
+    {
+        return -1;
+    }
+
+    if(message_size < sizeof(ZUC_MessageHeader_t))
+    {
+        return -1;
+    }
+
+    ZUC_MessageHeader_t header;
+    memcpy(&header, message, sizeof(header));
+
+    *out_source = header.code;
+    *out_size = message_size - sizeof(header);
+    memcpy(out_data, message + sizeof(header), *out_size);
+    return 0;
 }
 
-int32_t ZUC_ApiSend(ZUC_Api_t api, const void *data, uint16_t size)
+int32_t ZUC_ApiSendTo(ZUC_Api_t api, uint64_t code, const void *data, uint16_t size)
 {
-    return ZUC_RingBufferPush(api->send_ring_buffer, data, size);
+    if(size > ZUC_MESSAGE_MAX_PAYLOAD)
+    {
+        return -1;
+    }
+
+    uint8_t message[ZUC_RING_BUFFER_SLOT_SIZE];
+    const ZUC_MessageHeader_t header = { .code = code };
+    memcpy(message, &header, sizeof(header));
+    memcpy(message + sizeof(header), data, size);
+
+    return ZUC_RingBufferPush(api->send_ring_buffer, message, sizeof(header) + size);
+}
+
+int32_t ZUC_ApiBroadcast(ZUC_Api_t api, const void *data, uint16_t size)
+{
+    return ZUC_ApiSendTo(api, ZUC_MESSAGE_BROADCAST, data, size);
 }

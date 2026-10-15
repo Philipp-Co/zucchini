@@ -1,5 +1,6 @@
 #include <zucchini/client/client.h>
 #include <zucchini/ipc/ring_buffer.h>
+#include <zucchini/ipc/message.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -61,9 +62,19 @@ void ZUC_DestroyClientInterface(ZUC_ClientInterface_t *interface)
     *interface = NULL;
 }
 
-int32_t ZUC_ClientInterfaceSend(ZUC_ClientInterface_t interface, const void *data, uint16_t size)
+int32_t ZUC_ClientInterfaceSend(ZUC_ClientInterface_t interface, uint64_t source, const void *data, uint16_t size)
 {
-    const int32_t result = ZUC_RingBufferPush(interface->send_ring_buffer, data, size);
+    if(size > ZUC_MESSAGE_MAX_PAYLOAD)
+    {
+        return -1;
+    }
+
+    uint8_t message[ZUC_RING_BUFFER_SLOT_SIZE];
+    const ZUC_MessageHeader_t header = { .code = source };
+    memcpy(message, &header, sizeof(header));
+    memcpy(message + sizeof(header), data, size);
+
+    const int32_t result = ZUC_RingBufferPush(interface->send_ring_buffer, message, sizeof(header) + size);
     if(result != 0)
     {
         return result;
@@ -90,7 +101,25 @@ int32_t ZUC_ClientInterfaceSend(ZUC_ClientInterface_t interface, const void *dat
     return 0;
 }
 
-int32_t ZUC_ClientInterfaceReceive(ZUC_ClientInterface_t interface, void *out_data, uint16_t *out_size)
+int32_t ZUC_ClientInterfaceReceive(ZUC_ClientInterface_t interface, uint64_t *out_target, void *out_data, uint16_t *out_size)
 {
-    return ZUC_RingBufferPop(interface->receive_ring_buffer, out_data, out_size);
+    uint8_t message[ZUC_RING_BUFFER_SLOT_SIZE];
+    uint16_t message_size;
+    if(0 != ZUC_RingBufferPop(interface->receive_ring_buffer, message, &message_size))
+    {
+        return -1;
+    }
+
+    if(message_size < sizeof(ZUC_MessageHeader_t))
+    {
+        return -1;
+    }
+
+    ZUC_MessageHeader_t header;
+    memcpy(&header, message, sizeof(header));
+
+    *out_target = header.code;
+    *out_size = message_size - sizeof(header);
+    memcpy(out_data, message + sizeof(header), *out_size);
+    return 0;
 }
